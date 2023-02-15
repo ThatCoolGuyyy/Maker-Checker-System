@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RequestTypeEnums;
+use App\Enums\UserStatusEnums;
 use App\Models\User;
 use App\Jobs\SendEmail;
 use Illuminate\Http\Request;
@@ -39,10 +41,10 @@ class PendingRequestController extends Controller
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
-            'request_type' => 'create'
+            'request_type' => RequestTypeEnums::create,
         ]);
 
-        $this->send_mail($request);
+        // $this->send_mail($request);
         return $this->SuccessResponse('User create request submitted successfully. Please wait for approval');
 
 
@@ -62,7 +64,7 @@ class PendingRequestController extends Controller
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
-            'request_type' => 'update'
+            'request_type' => RequestTypeEnums::update,
         ]);
         $this->send_mail($request);
         $message = 'User update request submitted successfully. Please wait for approval';
@@ -71,21 +73,21 @@ class PendingRequestController extends Controller
     }
 
     
-    public function destroy(pendingRequest $pendingRequest, Request $request, $id)
+    public function destroy( Request $request)
     {
         $user_id = $request->id;
         $user = pendingRequest::where('user_id', $user_id)->first();
         if(!$user) {
             return $this->ErrorResponse('User not found');
         }
-        elseif($user->status == 'pending'){
+        elseif($user->status == UserStatusEnums::pending){
             $message = 'User action request already submitted. Please wait for approval';
             return $this->SuccessResponse($message);
         }
         $user::create([
             'admin_id' => auth()->user()->id,
             'user_id' => $user_id,
-            'request_type' => 'delete'
+            'request_type' => RequestTypeEnums::delete,
         ]);
         $this->send_mail($request);
         $message='User delete request submitted successfully. Please wait for approval';
@@ -106,7 +108,7 @@ class PendingRequestController extends Controller
                 return $this->SuccessResponse('User action request already rejected');
         }
         $user->update([
-            'status' => 'approved'
+            'status' => UserStatusEnums::approved
         ]);
         $request_type = $user->request_type;
         switch($request_type){
@@ -144,7 +146,7 @@ class PendingRequestController extends Controller
             case 'rejected':
                 return $this->ErrorResponse('User action request already rejected');
         }
-        $user->status = 'rejected';
+        $user->status = UserStatusEnums::rejected;
         $user->save();
         return $this->SuccessResponse('User action request rejected successfully');
     }

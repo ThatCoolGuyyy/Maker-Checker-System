@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\RequestTypeEnums;
+use App\Enums\UserStatusEnums;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,7 +26,12 @@ class pendingRequest extends Model
     {
         return $this->belongsTo(User::class);
     }
-    protected static function pendingFactory(){
-        return \database\Factories\pendingFactory::new();
+    protected static function pendingRequestFactory(){
+        return \database\Factories\pendingRequestFactory::new();
     }
+
+    protected $casts = [
+        'status' => UserStatusEnums::class,
+        'request_type' => RequestTypeEnums::class,
+    ];
 }
