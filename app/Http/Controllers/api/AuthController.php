@@ -32,13 +32,13 @@ class AuthController extends Controller
 
             if (! $admin || ! Hash::check($AdminLoginRequest->password, $admin->password)) {
                 return response()->json([
-                    'email' => ['Username or password incorrect'],
+                    'message' => ['Username or password incorrect'],
                 ]);
             }
     
         $admin->tokens()->delete();
     
-            return Response()->json([
+            return response()->json([
                 'status' => 'success',
                 'message' => 'User logged in successfully',
                 'data' => new AdminResource($admin),
