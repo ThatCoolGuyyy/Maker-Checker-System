@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\RequestTypeEnums;
-use App\Enums\UserStatusEnums;
 use App\Models\User;
 use App\Jobs\SendEmail;
 use Illuminate\Http\Request;
+use App\Enums\UserStatusEnums;
 use App\Models\pendingRequest;
+use App\Enums\RequestTypeEnums;
+use App\Http\Requests\AdminRequest;
 use App\Http\Traits\ResponseTraits;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class PendingRequestController extends Controller
 {
@@ -21,38 +23,38 @@ class PendingRequestController extends Controller
     	// 	'subject' => 'A new action has been created'
     	// ];
     	
-        $job = (new SendEmail())
-            	->delay(now()->addSeconds(2)); 
+        $job = (new SendEmail()); 
 
-        dispatch($job);
+        dispatch($job)->onqueue('database');
     }
 
-    public function create(Request $request)
+    public function create(AdminRequest $adminrequest)
     {
-        if($request->user_id) {
-            $user = PendingRequest::where('user_id', $request->user_id)->first();
+        if($adminrequest->user_id) {
+            $user = PendingRequest::where('user_id', $adminrequest->user_id)->first();
             if($user) {
                 return $this->ErrorResponse('a request has already been submitted for this user');
             }
         }
         pendingRequest::Create([
             'admin_id' => auth()->user()->id,
-            'user_id' => $request->user_id,
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'email' => $request->email,
+            'user_id' => $adminrequest->user_id,
+            'first_name' => $adminrequest->first_name,
+            'last_name' => $adminrequest->last_name,
+            'email' => $adminrequest->email,
             'request_type' => RequestTypeEnums::create,
+            'approval_admin_id' => $adminrequest->approval_admin_id,
         ]);
 
-        // $this->send_mail($request);
+        $this->send_mail($adminrequest);
         return $this->SuccessResponse('User create request submitted successfully. Please wait for approval');
 
 
     }
     
-    public function update(Request $request, pendingRequest $pendingRequest, $id)
+    public function update(AdminRequest $adminrequest)
     {
-        $user_id = $request->id;
+        $user_id = $adminrequest->id;
         $user = pendingRequest::where('user_id', $user_id)->first();
         if(!$user) {
             $message = 'User not found';
@@ -61,52 +63,65 @@ class PendingRequestController extends Controller
         $user::create([
             'admin_id' => auth()->user()->id,
             'user_id' => $user_id,
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'email' => $request->email,
+            'first_name' => $adminrequest->first_name,
+            'last_name' => $adminrequest->last_name,
+            'email' => $adminrequest->email,
             'request_type' => RequestTypeEnums::update,
+            'approval_admin_id' => $adminrequest->approval_admin_id,
         ]);
-        $this->send_mail($request);
+        $this->send_mail($adminrequest);
         $message = 'User update request submitted successfully. Please wait for approval';
         return $this->SuccessResponse($message);
 
     }
 
     
-    public function destroy( Request $request)
+    public function destroy( AdminRequest $adminrequest)
+    {
+        $user_id = $adminrequest->id;
+        $user = pendingRequest::where('user_id', $user_id)->first();
+        if(!$user) {
+            return $this->ErrorResponse('User not found');
+        }
+
+        $user::create([
+            'admin_id' => auth()->user()->id,
+            'user_id' => $user_id,
+            'first_name' => $adminrequest->first_name,
+            'last_name' => $adminrequest->last_name,
+            'email' => $adminrequest->email,
+            'request_type' => RequestTypeEnums::delete,
+            'approval_admin_id' => $adminrequest->approval_admin_id,
+        ]);
+        $this->send_mail($adminrequest);
+        $message='User delete request submitted successfully. Please wait for approval';
+        return $this->SuccessResponse($message);
+    }
+
+    
+    public function reject_request(Request $request)
     {
         $user_id = $request->id;
         $user = pendingRequest::where('user_id', $user_id)->first();
         if(!$user) {
             return $this->ErrorResponse('User not found');
         }
-        elseif($user->status == UserStatusEnums::pending){
-            $message = 'User action request already submitted. Please wait for approval';
-            return $this->SuccessResponse($message);
+        if ($user->status == 'approved'){
+                return $this->ErrorResponse('User action request already approved');
         }
-        $user::create([
-            'admin_id' => auth()->user()->id,
-            'user_id' => $user_id,
-            'request_type' => RequestTypeEnums::delete,
-        ]);
-        $this->send_mail($request);
-        $message='User delete request submitted successfully. Please wait for approval';
-        return $this->SuccessResponse($message);
+        $user->delete();
+        return $this->SuccessResponse('User action request rejected successfully');
     }
 
     public function approve_request(Request $request)
     {
         $user_id = $request->id;
         $user = pendingRequest::where('user_id', $user_id)->first();
-        if(!$user) {
-            return $this->ErrorResponse('User not found');
+        if($user->status == 'approved') 
+        {
+            return $this->ErrorResponse('User action request already approved');
         }
-        switch($user->status){
-            case 'approved':
-                return $this->SuccessResponse('User action request already approved');
-            case 'rejected':
-                return $this->SuccessResponse('User action request already rejected');
-        }
+        
         $user->update([
             'status' => UserStatusEnums::approved
         ]);
@@ -120,7 +135,7 @@ class PendingRequestController extends Controller
                 ]);
                 return $this->SuccessResponse('User create request approved successfully');
             case 'update':
-                $users = User::find($user_id);
+                $users = User::where('user_id', $user_id);
                 $users->update([
                     'first_name' => $user->first_name,
                     'last_name' => $user->last_name,
@@ -128,34 +143,30 @@ class PendingRequestController extends Controller
                 ]);
                 return $this->SuccessResponse('User update request approved successfully');
             case 'delete':
-                $user = User::where('id', $user->user_id)->first();
+                $user = User::find($user_id);
                 $user->delete();
                 return $this->SuccessResponse('User delete request approved successfully');
         }
 }
-    public function reject_request(Request $request, $id)
-    {
-        $user_id = $request->id;
-        $user = pendingRequest::where('user_id', $user_id)->first();
-        if(!$user) {
-            return $this->ErrorResponse('User not found');
-        }
-        switch($user->status){
-            case 'approved':
-                return $this->ErrorResponse('User action request already approved');
-            case 'rejected':
-                return $this->ErrorResponse('User action request already rejected');
-        }
-        $user->status = UserStatusEnums::rejected;
-        $user->save();
-        return $this->SuccessResponse('User action request rejected successfully');
-    }
 
-    public function pending_requests()
+    public function pending_requests( Request $request)
     {
         $pending_requests = pendingRequest::where('status', 'pending')->get();
         return response()->json([
             'pending_requests' => $pending_requests
+        ], 200);
+
+    
+    }
+    public function individual_pending_requests( Request $request)
+    {
+        $id = $request->id;
+        $pending_requests = pendingRequest::where('user_id', $id)->get();
+        if(!$pending_requests) {
+            return $this->ErrorResponse('Request not found');
+        }
+        return response()->json([
+            'pending_requests' => $pending_requests,
         ], 200);
     }
 

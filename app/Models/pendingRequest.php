@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class pendingRequest extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $fillable = [
         'user_id',
         'admin_id',
+        'approval_admin_id',
         'first_name',
         'last_name',
         'email',
@@ -26,6 +27,11 @@ class pendingRequest extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    // public function approval_admins()
+    // {
+    //     return $this->belongsTo(approval_admins_table::class);
+    // }
     protected static function pendingRequestFactory(){
         return \database\Factories\pendingRequestFactory::new();
     }

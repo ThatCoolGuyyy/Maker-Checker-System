@@ -26,13 +26,16 @@ Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
+// Route::post('/sendmail', [PendingRequestController::class, 'send_mail']);
+
 Route::group(['middleware' => ['auth:sanctum']], function() {
-    Route::delete('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('create/', [PendingRequestController::class, 'create']);
     Route::post('update/{id}', [PendingRequestController::class, 'update']);
     Route::delete('delete/{id}', [PendingRequestController::class, 'destroy']);
-    Route::get('pendingRequests', [PendingRequestController::class, 'pending_requests']);
-    Route::get('approve/{id}', [PendingRequestController::class, 'approve_request']);
-    Route::get('reject/{id}', [PendingRequestController::class, 'reject_request']);
+    Route::get('pendingrequests', [PendingRequestController::class, 'pending_requests']);
+    Route::post('pendingrequests/{id}', [PendingRequestController::class, 'individual_pending_requests'])->middleware('approvalAccess');
+    Route::post('approve/{id}', [PendingRequestController::class, 'approve_request'])->middleware('approvalAccess');
+    Route::post('reject/{id}', [PendingRequestController::class, 'reject_request'])->middleware('approvalAccess');
 });
     

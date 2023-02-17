@@ -41,7 +41,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'User logged in successfully',
-                'data' => new AdminResource($admin),
+                'nam' => new AdminResource($admin),
                 'token' => $admin->createToken('auth_token')->plainTextToken,
             ]);
         }

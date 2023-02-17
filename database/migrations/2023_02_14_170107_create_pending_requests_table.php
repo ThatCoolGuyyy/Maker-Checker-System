@@ -16,15 +16,16 @@ return new class extends Migration
         Schema::create('pending_requests', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
+            $table->string('approval_admin_id');
             $table->string('admin_id');
             $table->string('first_name');
             $table->string('last_name');
             $table->string('email');
             // $table->string('password'); 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            // $table->foreign('approval_admin_id')->references('id')->on('approval_admins_table')->onDelete('cascade');
             $table->string('status')->default('pending');
             $table->string('request_type')->default('create');
-            $table->softDeletes();
             $table->timestamps();
         });
     }

@@ -19,6 +19,7 @@ class pendingRequestFactory extends Factory
         return [
             'admin_id' => $this->faker->numberBetween(1, 10),
             'user_id' => $this->faker->numberBetween(1, 10),
+            'approval_admin_id' => $this->faker->numberBetween(1, 10),
             'request_type' => $this->faker->randomElement([ 'update', 'delete']),
             'status' => $this->faker->randomElement(['pending']),
             'first_name' => $this->faker->firstName,
