@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\RequestTypeEnums;
 use App\Enums\UserStatusEnums;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class pendingRequest extends Model
@@ -19,10 +18,11 @@ class pendingRequest extends Model
         'first_name',
         'last_name',
         'email',
-        'password',
         'status',
         'request_type'
     ];
+    // protected $primaryKey = 'user_id';
+    // public $incrementing = false;
     public function user()
     {
         return $this->belongsTo(User::class);

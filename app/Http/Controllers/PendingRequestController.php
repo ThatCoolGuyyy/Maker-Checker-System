@@ -103,10 +103,7 @@ class PendingRequestController extends Controller
     {
         $user_id = $request->id;
         $user = pendingRequest::where('user_id', $user_id)->first();
-        if(!$user) {
-            return $this->ErrorResponse('User not found');
-        }
-        if ($user->status == 'approved'){
+        if ($user->status->value == 'approved'){
                 return $this->ErrorResponse('User action request already approved');
         }
         $user->delete();
@@ -117,15 +114,15 @@ class PendingRequestController extends Controller
     {
         $user_id = $request->id;
         $user = pendingRequest::where('user_id', $user_id)->first();
-        if($user->status == 'approved') 
+        $status = $user->status->value;
+        if($status == 'approved') 
         {
             return $this->ErrorResponse('User action request already approved');
         }
-        
         $user->update([
             'status' => UserStatusEnums::approved
         ]);
-        $request_type = $user->request_type;
+        $request_type = $user->request_type->value;
         switch($request_type){
             case 'create':
                 $user = User::create([
@@ -135,7 +132,7 @@ class PendingRequestController extends Controller
                 ]);
                 return $this->SuccessResponse('User create request approved successfully');
             case 'update':
-                $users = User::where('user_id', $user_id);
+                $users = User::where('id', $user_id)->first();
                 $users->update([
                     'first_name' => $user->first_name,
                     'last_name' => $user->last_name,
